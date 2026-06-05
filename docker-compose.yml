@@ -1,0 +1,13 @@
+services:
+  gemini-sister:
+    build: .
+    container_name: gemini-sister-web
+    ports:
+      # 前面的 8000 是宿主机端口，后面的 ${SERVER_PORT:-8000} 是读取 env 文件，默认 8000
+      - "8000:${SERVER_PORT:-8000}"
+    env_file:
+      - .env
+    environment:
+      # 强制 Python 实时输出日志，不再放入缓存，这是排错的关键
+      - PYTHONUNBUFFERED=1
+    restart: always
