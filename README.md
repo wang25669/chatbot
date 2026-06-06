@@ -21,6 +21,7 @@
 ├── main.py               # FastAPI 后端核心 (跨域 WebSocket 引擎)
 ├── index.html            # 独立抽离的前端测试面板 (自动映射宿主 IP)
 └── requirements.txt      # Python SDK 依赖
+```
 
 ## 🛠️ 如何配置 (.env)
 项目的所有动态参数均已提取至 .env 文件中。启动前，请确保在根目录创建了 .env 并填入以下核心内容：
