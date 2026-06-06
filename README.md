@@ -22,7 +22,7 @@
 ├── index.html            # 独立抽离的前端测试面板 (自动映射宿主 IP)
 └── requirements.txt      # Python SDK 依赖
 
-##🛠️ 如何配置 (.env)
+## 🛠️ 如何配置 (.env)
 项目的所有动态参数均已提取至 .env 文件中。启动前，请确保在根目录创建了 .env 并填入以下核心内容：
 GEMINI_API_KEY：你在 Google AI Studio 申请的 API Key。
 GEMINI_MODEL：支持 Live API 的模型名称，目前推荐 gemini-3.1-flash-live-preview。
@@ -34,17 +34,17 @@ GEMINI_VOICE：声音预设。给孩子使用推荐以下几种：
 AUDIO_PROMPT / VIDEO_PROMPT：
 你可以随时在 .env 中修改这两种模式的指导提示词（Prompt）。
 
-##🚀 本地部署测试
+## 🚀 本地部署测试
 配置环境变量：在项目根目录编辑 .env 文件，填入你的 GEMINI_API_KEY。
 启动构建：docker compose up -d
 开始体验：
 必须在局域网 HTTPS 环境或 localhost 下访问（例如 http://127.0.0.1:8000 或利用内网穿透 / 反向代理生成的安全链接），否则手机浏览器无法获取麦克风和摄像头权限。
 点击对应的通话模式即可开始双向全双工对话！
 
-##📱 使用指南与网络要求
+## 📱 使用指南与网络要求
 在服务器启动成功后，网页服务将默认监听 8000 端口。
 
-##⚠️ 极其重要 (HTTPS 要求)：
+## ⚠️ 极其重要 (HTTPS 要求)：
 现代手机浏览器（如 iOS Safari 或 Android Chrome）出于隐私安全，仅允许在 HTTPS 环境下或 localhost 环境下调用摄像头和麦克风。
 如果你需要用手机连接局域网中的服务器，请务必使用 OpenResty / Nginx 配合反向代理配置 HTTPS 证书，或使用 ngrok 进行内网穿透（如 ngrok http 8000 生成 https 链接）。
 用手机浏览器打开配置好的 HTTPS 地址，即可看到选择界面。
