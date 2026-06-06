@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能玩伴 (独立前端)</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; background-color: #fdf6e3; margin: 0;}
+        h1 { color: #d9777f; margin-bottom: 10px;}
+        #videoContainer { position: relative; width: 90%; max-width: 400px; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 16px rgba(0,0,0,0.1); margin-bottom: 20px; display: none;}
+        video { width: 100%; display: block; background-color: #000; }
+        .btn-group { display: flex; gap: 15px; margin-bottom: 15px; }
+        button { padding: 18px 24px; font-size: 18px; border-radius: 50px; border: none; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-weight: bold;}
+        #audioBtn { background-color: #d9777f; }
+        #videoBtn { background-color: #5c9b74; }
+        #stopBtn { background-color: #e74c3c; display: none; width: 80%; max-width: 300px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #status { margin-top: 15px; font-size: 16px; color: #555;}
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+    <h1 id="titleText">👧 邻家大姐姐</h1>
+    
+    <div id="videoContainer">
+        <video id="cameraFeed" autoplay playsinline muted></video>
+    </div>
+
+    <div class="btn-group" id="startButtons">
+        <button id="audioBtn">📞 语音通话</button>
+        <button id="videoBtn">📷 视频探索</button>
+    </div>
+    
+    <button id="stopBtn">挂断</button>
+    
+    <div id="status">请选择一种互动方式...</div>
+    <canvas id="canvasElement"></canvas>
+
+    <script>
+        // 动态获取当前访问主机的 WebSocket 地址
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const BACKEND_WS_URL = `${protocol}//${window.location.host}`; 
+        
+        let socket;
+        let audioContext;
+        let processor;
+        let mediaStream;
+        let playContext;
+        let videoInterval;
+        
+        let nextPlayTime = 0;
+        let activeSources = [];
+
+        const audioBtn = document.getElementById('audioBtn');
+        const videoBtn = document.getElementById('videoBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const videoContainer = document.getElementById('videoContainer');
+        const video = document.getElementById('cameraFeed');
+        const canvas = document.getElementById('canvasElement');
+        const ctx = canvas.getContext('2d');
+        const titleText = document.getElementById('titleText');
+
+        audioBtn.onclick = () => startSession('audio');
+        videoBtn.onclick = () => startSession('video');
+        stopBtn.onclick = () => stopConversation();
+
+        function stopAllAudio() {
+            activeSources.forEach(source => {
+                try { source.stop(); } catch (e) {}
+            });
+            activeSources = [];
+            if (playContext) {
+                nextPlayTime = playContext.currentTime; 
+            }
+        }
+
+        async function startSession(mode) {
+            audioBtn.disabled = true;
+            videoBtn.disabled = true;
+            status.innerText = "正在连接...";
+            
+            document.getElementById('startButtons').style.display = 'none';
+            stopBtn.style.display = 'block';
+
+            try {
+                const constraints = {
+                    audio: { sampleRate: 16000, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                };
+
+                if (mode === 'video') {
+                    constraints.video = { facingMode: "environment", width: { ideal: 768 }, height: { ideal: 768 } };
+                    videoContainer.style.display = 'block';
+                    titleText.innerText = "🌿 科学小老师";
+                } else {
+                    titleText.innerText = "👧 邻家大姐姐";
+                }
+
+                mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                if (mode === 'video') {
+                    video.srcObject = mediaStream;
+                }
+
+                audioContext = new AudioContext({ sampleRate: 16000 });
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                processor = audioContext.createScriptProcessor(2048, 1, 1);
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                // 连接到 FastAPI 后端对应的 WebSocket 接口
+                socket = new WebSocket(`${BACKEND_WS_URL}/ws/${mode}`);
+                socket.binaryType = 'arraybuffer';
+
+                socket.onopen = () => {
+                    status.innerText = mode === 'video' ? "🟢 镜头已开启！" : "🟢 通话中，可以说话啦！";
+                    
+                    if (mode === 'video') {
+                        videoInterval = setInterval(() => {
+                            if (socket.readyState === WebSocket.OPEN && video.readyState === video.HAVE_ENOUGH_DATA) {
+                                canvas.width = video.videoWidth;
+                                canvas.height = video.videoHeight;
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                const base64Data = canvas.toDataURL('image/jpeg', 0.8).split(',');
+                                socket.send(JSON.stringify({ type: "video", data: base64Data }));
+                            }
+                        }, 1000); 
+                    }
+                };
+
+                processor.onaudioprocess = (e) => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const pcmData = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                        }
+                        socket.send(pcmData.buffer);
+                    }
+                };
+
+                playContext = new AudioContext({ sampleRate: 24000 });
+                nextPlayTime = playContext.currentTime;
+
+                socket.onmessage = async (event) => {
+                    if (typeof event.data === "string") {
+                        if (event.data === "interrupted") {
+                            stopAllAudio();
+                        }
+                        return;
+                    }
+
+                    const pcmData = new Int16Array(event.data);
+                    const floatData = new Float32Array(pcmData.length);
+                    for (let i = 0; i < pcmData.length; i++) {
+                        floatData[i] = pcmData[i] / 32768;
+                    }
+                    const audioBuffer = playContext.createBuffer(1, floatData.length, 24000);
+                    audioBuffer.getChannelData(0).set(floatData);
+                    
+                    const playSource = playContext.createBufferSource();
+                    playSource.buffer = audioBuffer;
+                    playSource.connect(playContext.destination);
+                    
+                    const currentTime = playContext.currentTime;
+                    if (nextPlayTime < currentTime) {
+                        nextPlayTime = currentTime;
+                    }
+                    
+                    playSource.start(nextPlayTime);
+                    nextPlayTime += audioBuffer.duration;
+
+                    playSource.onended = () => {
+                        const index = activeSources.indexOf(playSource);
+                        if (index > -1) activeSources.splice(index, 1);
+                    };
+                    activeSources.push(playSource);
+                };
+
+                socket.onclose = () => {
+                    if (status.innerText !== "已挂断") stopConversation(true);
+                };
+
+            } catch (err) {
+                status.innerText = "❌ 硬件访问失败，请检查浏览器权限。";
+                resetUI();
+            }
+        }
+
+        function stopConversation(autoDisconnect = false) {
+            if (socket) socket.close();
+            if (processor) processor.disconnect();
+            if (audioContext) audioContext.close();
+            if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+            if (videoInterval) clearInterval(videoInterval);
+            stopAllAudio();
+            if (playContext) playContext.close();
+            
+            video.srcObject = null;
+            status.innerText = autoDisconnect ? "⏱️ 会话结束或连接断开" : "已挂断";
+            resetUI();
+        }
+
+        function resetUI() {
+            videoContainer.style.display = 'none';
+            document.getElementById('startButtons').style.display = 'flex';
+            stopBtn.style.display = 'none';
+            audioBtn.disabled = false;
+            videoBtn.disabled = false;
+            titleText.innerText = "👧 邻家大姐姐";
+        }
+    </script>
+</body>
+</html>
