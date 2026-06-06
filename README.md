@@ -25,20 +25,19 @@
 
 ## 🛠️ 如何配置 (.env)
 项目的所有动态参数均已提取至 .env 文件中。启动前，请确保在根目录创建了 .env 并填入以下核心内容：
-GEMINI_API_KEY：你在 Google AI Studio 申请的 API Key。
-GEMINI_MODEL：支持 Live API 的模型名称，目前推荐 gemini-3.1-flash-live-preview。
-GEMINI_VOICE：声音预设。给孩子使用推荐以下几种：
-  Leda (年轻活力)
-  Puck (欢快)
-  Callirrhoe (随和)
-  Vindemiatrix (极其温柔)
-AUDIO_PROMPT / VIDEO_PROMPT：
-你可以随时在 .env 中修改这两种模式的指导提示词（Prompt）。
+* GEMINI_API_KEY：你在 Google AI Studio 申请的 API Key。
+* GEMINI_MODEL：支持 Live API 的模型名称，目前推荐 gemini-3.1-flash-live-preview。
+* GEMINI_VOICE：声音预设。给孩子使用推荐以下几种：
+  * Leda (年轻活力)
+  * Puck (欢快)
+  * Callirrhoe (随和)
+  * Vindemiatrix (极其温柔)
+* AUDIO_PROMPT / VIDEO_PROMPT：你可以随时在 .env 中修改这两种模式的指导提示词（Prompt）。
 
 ## 🚀 本地部署测试
-配置环境变量：在项目根目录编辑 .env 文件，填入你的 GEMINI_API_KEY。
-启动构建：docker compose up -d
-开始体验：
+* 配置环境变量：在项目根目录编辑 .env 文件，填入你的 GEMINI_API_KEY。
+* 启动构建：docker compose up -d
+* 开始体验：
 必须在局域网 HTTPS 环境或 localhost 下访问（例如 http://127.0.0.1:8000 或利用内网穿透 / 反向代理生成的安全链接），否则手机浏览器无法获取麦克风和摄像头权限。
 点击对应的通话模式即可开始双向全双工对话！
 

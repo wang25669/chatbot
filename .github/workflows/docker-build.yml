@@ -4,6 +4,8 @@ name: Build and Push Multi-Arch Docker Image
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'README.md'
     workflow_dispatch:
 
 # 权限设置：允许工作流推送镜像到 GitHub Packages
